@@ -73,7 +73,7 @@ class Map():
         self.walls.draw(surface)
         self.portal.draw(surface)
         self.monsters.draw(surface)
-        self.monsters.update(self.walls)
+        self.monsters.update(self.walls,self.player)
 
 
         
@@ -93,17 +93,38 @@ class Hero(GameSpite):
         super().__init__(x, y, w, h, picture)
         self.speed_x = 0
         self.speed_y = 0
+        self.speeds = [[0,5],[-5,0],[0,-5],[5,0]]
+        self.direction = 0
+        self.bullets = sprite.Group()
     def move(self):
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
+    def fire(self):
+        self.bullets.add(Bullet(self.rect.x, self.rect.y, 20, 20, 'Sprites/bullet.png',self.speeds[self.direction]))
+
+
+class Bullet(GameSpite):
+    def __init__(self,x, y, w, h,picture,direction):
+        super().__init__(x, y, w, h, picture)
+        self.speed_x = direction[0]
+        self.speed_y = direction[1]
+    def update(self):
+        self.rect.x += self.speed_x
+        self.rect.y += self.speed_y
+        if sprite.spritecollide(self, land.walls,False):
+            self.kill()
+        elif sprite.spritecollide(self, land.monsters,False):
+            self.kill()  
+
+
 
 class Monster(GameSpite):
     def __init__(self,x, y, w, h,picture):
         super().__init__(x, y, w, h, picture)
-        self.speeds = [[0,5],[-5,0],[0,-5],[5,0]]
+        self.speeds = [[0,5],[-5,0],[0,-5],[5,0]] #UP LEFT DOWN RIGHT
         self.direction = 0
         self.speed_x,self.speed_y = self.speeds[self.direction][0],self.speeds[self.direction][1]
-    def update(self,walls):
+    def update(self,walls,player):
         if sprite.spritecollide(self, walls,False):
             self.rect.y -= self.speed_y 
             self.rect.x -= self.speed_x
@@ -125,10 +146,25 @@ class Monster(GameSpite):
         elif rand == 20:
             self.speed_x,self.speed_y = self.speeds[self.direction][0],self.speeds[1][1] 
         elif rand == 15:
-            self.speed_x,self.speed_y = self.speeds[self.direction][0],self.speeds[3][1]                          
+            self.speed_x,self.speed_y = self.speeds[self.direction][0],self.speeds[3][1]    
+        if self.rect.y == player.rect.y:
+            if  player.rect.x >= self.rect.x:
+                self.speed_x,self.speed_y = self.speeds[3][0],self.speeds[3][1]
+            if  player.rect.x < self.rect.x: 
+                self.speed_x = -5
+                self.speed_y = 0
+
+        if self.rect.x == player.rect.x:
+            if  player.rect.y >= self.rect.y:
+                self.speed_x,self.speed_y = self.speeds[0][0],self.speeds[0][1]
+            if  player.rect.y < self.rect.y: 
+                self.speed_x = 0
+                self.speed_y = -5       
+
         self.rect.y += self.speed_y 
         self.rect.x += self.speed_x
-       
+        if sprite.spritecollide(self, player.bullets,False):
+            self.kill()
 
  #картинку поменять
     
@@ -144,15 +180,29 @@ while run:
     for e in event.get():
         if e.type == QUIT:
             run = False
-        if e.type == KEYDOWN:
+        if e.type == KEYDOWN: #UP LEFT DOWN RIGHT
             if e.key == K_w:
                 land.player.speed_y = -5
             elif e.key == K_s:
                 land.player.speed_y = 5
+
             elif e.key == K_d:
                 land.player.speed_x = 5
+
             elif e.key == K_a:
-                land.player.speed_x = -5 
+                land.player.speed_x = -5
+
+
+            if e.key == K_UP:    
+                land.player.direction = 2
+            elif e.key == K_DOWN:    
+                land.player.direction = 0
+            elif e.key == K_RIGHT:    
+                land.player.direction = 3
+            elif e.key == K_LEFT:    
+                land.player.direction = 1            
+            if e.key == K_SPACE:
+                land.player.fire()     
             if e.key == K_SPACE and finish == True:                
                 land = Map("Sprites/realistic-red-color-brick-wall-seamless-pattern_251819-2333.jpg","Sprites/final.png","Sprites/ghost.png",levels[0]) # картинку свою 
                 run = True
@@ -171,6 +221,8 @@ while run:
         #window.blit(background, (0, 0))
         window.fill((0, 0, 0))
         land.reset(window)
+        land.player.bullets.draw(window)
+        land.player.bullets.update()
         land.player.draw(window)
         display.update()
         clock.tick(60)
@@ -196,4 +248,5 @@ while run:
 
     else:
         lv = 0
-        display.update()    
+        display.update()           
+          
